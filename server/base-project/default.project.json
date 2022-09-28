@@ -1,0 +1,21 @@
+{
+    "name": "Wally Package Server",
+    "tree": {
+        "$className": "DataModel",
+        "$ignoreUnknownInstances": true,
+        "ReplicatedStorage": {
+            "$ignoreUnknownInstances": true,
+            "Packages": {
+                "$ignoreUnknownInstances": false,
+                "$path": "Packages"
+            }
+        },
+        "ServerStorage": {
+            "$ignoreUnknownInstances": true,
+            "Packages": {
+                "$ignoreUnknownInstances": false,
+                "$path": "ServerPackages"
+            }
+        }
+    }
+}
