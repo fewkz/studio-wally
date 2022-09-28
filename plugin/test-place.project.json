@@ -1,0 +1,11 @@
+{
+  "name": "Wally Plugin Test Place",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "WallyPlugin": {
+        "$path": "default.project.json"
+      }
+    }
+  }
+}

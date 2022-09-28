@@ -1,0 +1,9 @@
+{
+  "name": "WallyPlugin",
+  "tree": {
+    "$path": "plugin.server.luau",
+    "gah": {
+      "$path": "gah.luau"
+    }
+  }
+}

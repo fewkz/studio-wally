@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: request-handler
+  # labels:
+  #   app.kubernetes.io/name: request-handler
+spec:
+  containers:
+    - name: request-handler
+      image: request-handler
+      ports:
+        - containerPort: 80
+          name: http-web-svc
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: request-handler-service
+# spec:
+#   selector:
+#     app.kubernetes.io/name: request-handler
+#   ports:
+#     - name: http-web-svc
+#       protocol: TCP
+#       port: 80
+#       targetPort: http-web-svc

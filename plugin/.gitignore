@@ -1,0 +1,10 @@
+
+# Builds
+WallyPlugin.rbxm
+
+# Roblox Studio lock files
+/*.rbxlx.lock
+/*.rbxl.lock
+
+# Luau-lsp sourcemap
+sourcemap.json

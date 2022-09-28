@@ -1,0 +1,20 @@
+apiVersion: skaffold/v2beta29
+kind: Config
+metadata:
+  name: server
+build:
+  artifacts:
+  - image: request-handler
+    docker:
+      dockerfile: request-handler.Dockerfile
+  - image: wally-server
+    docker:
+      dockerfile: wally-server.Dockerfile
+deploy:
+  kubectl:
+    manifests:
+      - request-handler.yaml
+portForward:
+  - resourceType: pod
+    resourceName: request-handler
+    port: 80

@@ -1,0 +1,13 @@
+{
+    "folders": [
+        {
+            "name": "Plugin",
+            "path": "plugin",
+        },
+        {
+            "name": "Server",
+            "path": "server",
+        }
+    ],
+    "settings": {}
+}
