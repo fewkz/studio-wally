@@ -11,6 +11,16 @@ spec:
       ports:
         - containerPort: 80
           name: http-web-svc
+    # See: https://stackoverflow.com/a/37569397
+    - name: dnsmasq
+      image: "janeczku/go-dnsmasq:release-1.0.5"
+      args:
+        - --listen
+        - "127.0.0.1:53"
+        - --default-resolver
+        - --append-search-domains
+        - --hostsfile=/etc/hosts
+        - --verbose
 # ---
 # apiVersion: v1
 # kind: Service
