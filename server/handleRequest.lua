@@ -9,11 +9,25 @@ local file = io.open("/var/run/secrets/kubernetes.io/serviceaccount/token", "r")
 local token = file:read()
 
 ngx.log(ngx.INFO, "Sending request to kubernetes api")
-local res, err = http:request_uri("http://127.0.0.1:81", {
-	method = "GET",
+
+local body = [[{
+"kind": "Job",
+"metadata": { "name": "lol" },
+"spec": { "ttlSecondsAfterFinished": 100, "template": { "spec": {
+	"containers": [ {
+		"name": "test",
+		"image": "ghcr.io/fewkz/studio-wally/wally-server",
+		"command": ["sh", "-c", "timeout 20 ./wally-server-startup.sh || test $? -eq 124"]
+	}],
+	"restartPolicy": "Never"
+} } }
+}]]
+local res, err = http:request_uri("http://127.0.0.1:81/apis/batch/v1/namespaces/default/jobs", {
+	method = "POST",
 	headers = {
 		Authorization = "Bearer " .. token,
 	},
+	body = body,
 })
 ngx.log(ngx.INFO, "Received response from kubernetes api")
 if not res then

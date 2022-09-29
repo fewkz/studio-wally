@@ -14,6 +14,7 @@ deploy:
   kubectl:
     manifests:
       - request-handler.yaml
+      - rbac.yaml
 portForward:
   - resourceType: pod
     resourceName: request-handler
