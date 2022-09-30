@@ -62,7 +62,7 @@ editManifestButton.Click:Connect(function()
 	plugin:OpenScript(source)
 end)
 
-local packagePattern = "^%w+/%w+@[%w.]+$"
+local packagePattern = "^.+/.+@.+$"
 local function loadManifest(): { status: "ok", url: string, packages: { string } } | { status: "manifest_not_found" }
 	local source = ServerStorage:FindFirstChild("StudioWallyManifest")
 	if source then

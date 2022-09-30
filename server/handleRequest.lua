@@ -93,27 +93,34 @@ ngx.log(ngx.INFO, id)
 local timeout = 240
 
 local dependencies = body.data.dependencies
-assert(dependencies, "Request had no dependenices")
+assert(dependencies, "Request didn't include a dependencies field")
 ngx.log(
 	ngx.INFO,
 	"Received request from " .. body.data.userName .. " to install dependencies " .. table.concat(dependencies, ", ")
 )
-local command = "./wally-server-startup.sh"
-local dependencyPattern = '^%w+ = "%w+/%w+@[%w.]+"$'
+
+-- This is to prevent shell injection
+local command = {
+	"sh",
+	"-c",
+	string.format("timeout %d ./wally-server-startup.sh $0 $@ || test $? -eq 124", timeout),
+}
 for _, dependency in pairs(dependencies) do
-	if not string.match(dependency, dependencyPattern) then
-		ngx.say(json.encode({
-			status = "invalid_dependency",
-			reason = string.format("Dependency '%s' is invalid", dependency),
-		}))
-		return
-	end
-	command = command .. " '" .. dependency .. "'"
+	local noSpaces = string.gsub(dependency, " ", "")
+	table.insert(command, noSpaces)
 end
+
 local job = createNamespacedObject("batch", "v1", "default", "jobs", {
 	kind = "Job",
 	metadata = {
 		name = id,
+		annotations = {
+			placeName = tostring(body.data.placeName),
+			placeId = tostring(body.data.placeId),
+			gameId = tostring(body.data.gameId),
+			userName = tostring(body.data.userName),
+			userId = tostring(body.data.userId),
+		},
 	},
 	spec = {
 		ttlSecondsAfterFinished = 100,
@@ -124,11 +131,7 @@ local job = createNamespacedObject("batch", "v1", "default", "jobs", {
 					{
 						name = "wally-server",
 						image = "ghcr.io/fewkz/studio-wally/wally-server",
-						command = {
-							"sh",
-							"-c",
-							string.format("timeout %d %s || test $? -eq 124", timeout, command),
-						},
+						command = command,
 						ports = { {
 							containerPort = 34872,
 							name = "rojo-port",
@@ -140,7 +143,7 @@ local job = createNamespacedObject("batch", "v1", "default", "jobs", {
 	},
 })
 if job.status ~= "created" then
-	ngx.log(ngx.ERR, "failed to create job because creating job had status", job.status)
+	ngx.log(ngx.ERR, "failed to create job because creating job had status ", job.status)
 	ngx.say(json.encode({ status = "failed", reason = job }))
 	return
 end
