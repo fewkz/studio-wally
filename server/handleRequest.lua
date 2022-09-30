@@ -1,7 +1,25 @@
 local http = require("resty.http").new()
 local json = require("cjson").new()
+local uuid = require("resty.jit-uuid")
 
 http:set_timeout(4000)
+
+local function getJsonBody()
+	ngx.req.read_body()
+	local request_body = ngx.req.get_body_data()
+	local suc, body = pcall(json.decode, request_body)
+	if suc then
+		return { status = "ok", data = body }
+	else
+		return { status = "err", msg = body }
+	end
+end
+
+local body = getJsonBody()
+if body.status ~= "ok" then
+	ngx.say(json.encode(body))
+	return
+end
 
 -- Read the default service account token (https://kubernetes.io/docs/tasks/run-application/access-api-from-pod/#without-using-a-proxy)
 -- Update, upon reading the documentation, I realize I could of just ran a sidecar with the command `kubectl proxy` and avoid having to
@@ -63,13 +81,35 @@ local function createNamespacedObject(group, version, namespace, noun, data)
 	elseif res.status == 409 then
 		return { status = "conflict", resource = json.decode(res.body) }
 	else
-		return { status = "failed", resource = json.decode(res.body) }
+		return { status = "failed_" .. res.status, resource = json.decode(res.body) }
 	end
 end
 
-local id = "lol"
+-- Probably a better way to generate a unique id
+uuid.seed()
+local id = string.sub(uuid(), 1, 8)
+ngx.log(ngx.INFO, id)
+
 local timeout = 240
 
+local dependencies = body.data.dependencies
+assert(dependencies, "Request had no dependenices")
+ngx.log(
+	ngx.INFO,
+	"Received request from " .. body.data.userName .. " to install dependencies " .. table.concat(dependencies, ", ")
+)
+local command = "./wally-server-startup.sh"
+local dependencyPattern = '^%w+ = "%w+/%w+@[%w.]+"$'
+for _, dependency in pairs(dependencies) do
+	if not string.match(dependency, dependencyPattern) then
+		ngx.say(json.encode({
+			status = "invalid_dependency",
+			reason = string.format("Dependency '%s' is invalid", dependency),
+		}))
+		return
+	end
+	command = command .. " '" .. dependency .. "'"
+end
 local job = createNamespacedObject("batch", "v1", "default", "jobs", {
 	kind = "Job",
 	metadata = {
@@ -87,9 +127,7 @@ local job = createNamespacedObject("batch", "v1", "default", "jobs", {
 						command = {
 							"sh",
 							"-c",
-							"timeout "
-								.. timeout
-								.. " ./wally-server-startup.sh 'cmdr = \"evaera/cmdr@1.9.0\"' 'roact = \"roblox/roact@1.4.4\"' 'promise = \"evaera/promise@4.0.0\"' 'testez = \"roblox/testez@0.4.1\"' || test $? -eq 124",
+							string.format("timeout %d %s || test $? -eq 124", timeout, command),
 						},
 						ports = { {
 							containerPort = 34872,
@@ -111,7 +149,7 @@ end
 local service = createNamespacedObject(nil, "v1", "default", "services", {
 	kind = "Service",
 	metadata = {
-		name = id .. "-service",
+		name = "server-" .. id,
 		ownerReferences = {
 			{
 				apiVersion = "batch/v1",
@@ -136,9 +174,15 @@ local service = createNamespacedObject(nil, "v1", "default", "services", {
 		} },
 	},
 })
+if service.status ~= "created" then
+	ngx.log(ngx.ERR, "failed to create service because creating service had status ", service.status)
+	ngx.say(json.encode({ status = "failed", reason = service }))
+	return
+end
 
 ngx.say(json.encode({
 	status = "ok",
 	ip = externalIP.address,
 	port = service.resource.spec.ports[1].nodePort,
+	id = id, -- Eventually we should have the plugin tell the server to stop serving once it's finished syncing.
 }))

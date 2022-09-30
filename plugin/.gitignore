@@ -8,3 +8,6 @@ WallyPlugin.rbxm
 
 # Luau-lsp sourcemap
 sourcemap.json
+
+# Wally packages
+Packages

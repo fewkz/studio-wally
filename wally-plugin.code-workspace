@@ -9,5 +9,9 @@
             "path": "server",
         }
     ],
-    "settings": {}
+    "settings": {
+        "vs-kubernetes": {
+            "disable-linters": ["resource-limits"],
+        }
+    }
 }
