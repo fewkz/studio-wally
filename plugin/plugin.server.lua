@@ -8,6 +8,7 @@ local StudioService = game:GetService("StudioService")
 type RojoApi = {
 	ConnectAsync: (self: RojoApi, host: string, port: number) -> (),
 	DisconnectAsync: (self: RojoApi) -> (),
+	RequestAccess: (self: RojoApi, permissions: { string }) -> (),
 	Connected: boolean,
 	Changed: RBXScriptSignal<string, any?, any?>,
 }
@@ -175,8 +176,18 @@ installPackagesButton.Click:Connect(function()
 		return
 	end
 	assert(manifest.status == "ok")
+
 	local api = getRojoAPI()
 	assert(api, "Rojo Headless API not found. Make sure you have a version of the Rojo plugin with it available.")
+
+	-- Will yield until permissions are accepted
+	api:RequestAccess({
+		"Connected",
+		"Changed",
+		"ConnectAsync",
+		"DisconnectAsync",
+	})
+
 	if not api.Connected then
 		local nonManagedPackagesWarning = "This place has a Packages folder that wasn't made by studio wally."
 			.. " Please delete it yourself to make sure studio wally won't override anything."
