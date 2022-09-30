@@ -21,3 +21,5 @@ The plugin adds two buttons to the plugin toolbar, the "Edit Packages" button wi
 which stores the configuration for studio wally and what packages to install.
 
 The "Install Packages" button will send a request to the server to download the packages, which will use Rojo to sync the packages in.
+
+Make sure to check the output if something unexpected happened, as it gives errors when something goes wrong. Feel free to open an issue if you run into any problems.
