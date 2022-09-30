@@ -19,37 +19,36 @@ end
 local toolbar = plugin:CreateToolbar("Studio Wally")
 
 local tooltips = {
-	editDependencies = "Opens the script where you define your dependencies",
-	installDependencies = "Installs the dependencies you defined into your project",
+	editManifest = "Opens the script where you define your packages",
+	installPackages = "Installs the packages you defined into your project",
 }
-local editDependenciesButton: PluginToolbarButton =
-	toolbar:CreateButton("Edit", tooltips.editDependencies, "rbxassetid://6124828331", "Edit Packages")
-editDependenciesButton.ClickableWhenViewportHidden = true
+local editManifestButton: PluginToolbarButton =
+	toolbar:CreateButton("Edit", tooltips.editManifest, "rbxassetid://6124828331", "Edit Packages")
+editManifestButton.ClickableWhenViewportHidden = true
 
-local installDependenciesButton: PluginToolbarButton =
-	toolbar:CreateButton("Install", tooltips.installDependencies, "rbxassetid://6124828331", "Install Packages")
-installDependenciesButton.ClickableWhenViewportHidden = true
--- installDependenciesButton.Enabled = false
+local installPackagesButton: PluginToolbarButton =
+	toolbar:CreateButton("Install", tooltips.installPackages, "rbxassetid://6124828331", "Install Packages")
+installPackagesButton.ClickableWhenViewportHidden = true
 
 local manifestTemplate = [[
 -- This is the manifest file for the Studio Wally plugin.
--- In this file, you define all the dependencies you want
+-- In this file, you define all the packages you want
 -- the plugin to install.
 return {
 	-- The server is where the plugin connects to via rojo
 	-- to pull packages from. For info on hosting your own
 	-- server, see https://github.com/fewkz/studio-wally/tree/main/server
 	studioWallyServer = "https://studio-wally.fewkz.com",
-	-- Dependencies are defined in the standard wally format of
+	-- Packages are defined in the standard wally format of
 	-- Name = "user/package@version"
 	-- Visit https://wally.run/ to find available packages
-	dependencies = {
+	packages = {
 		-- Promise = "evaera/promise@4.0.0",
 	}
 }
 ]]
 
-editDependenciesButton.Click:Connect(function()
+editManifestButton.Click:Connect(function()
 	local source = ServerStorage:FindFirstChild("StudioWallyManifest")
 	if source then
 		assert(source:IsA("ModuleScript"), "StudioWallyManifest was not a ModuleScript")
@@ -64,27 +63,26 @@ editDependenciesButton.Click:Connect(function()
 end)
 
 local packagePattern = "^%w+/%w+@[%w.]+$"
-local function loadManifest(
-): { status: "ok", url: string, dependencies: { string } } | { status: "manifest_not_found" }
+local function loadManifest(): { status: "ok", url: string, packages: { string } } | { status: "manifest_not_found" }
 	local source = ServerStorage:FindFirstChild("StudioWallyManifest")
 	if source then
 		assert(source:IsA("ModuleScript"), "StudioWallyManifest was not a ModuleScript")
 		local manifest = require(source:Clone())
 		assert(typeof(manifest.studioWallyServer) == "string", "Manifest is missing valid studioWallyServer field")
-		assert(typeof(manifest.dependencies) == "table", "Manifest is missing valid dependencies field.")
-		local dependencyStrings = {}
-		for name, package in manifest.dependencies do
-			assert(typeof(name) == "string", "Dependency had key " .. tostring(name) .. ", must be a string.")
-			assert(
-				typeof(package) == "string" and string.match(package, packagePattern),
-				"Invalid dependency " .. package
-			)
-			table.insert(dependencyStrings, name .. ' = "' .. package .. '"')
+		if manifest.dependencies then
+			error("Dependencies field was renamed to packages, you must rename it in the manifest.")
+		end
+		assert(typeof(manifest.packages) == "table", "Manifest is missing valid packages field.")
+		local packageStrings = {}
+		for name, package in manifest.packages do
+			assert(typeof(name) == "string", "Package had key " .. tostring(name) .. ", must be a string.")
+			assert(typeof(package) == "string" and string.match(package, packagePattern), "Invalid package " .. package)
+			table.insert(packageStrings, name .. ' = "' .. package .. '"')
 		end
 		return {
 			status = "ok",
 			url = manifest.studioWallyServer,
-			dependencies = dependencyStrings,
+			packages = packageStrings,
 		}
 	else
 		return { status = "manifest_not_found" }
@@ -92,7 +90,7 @@ local function loadManifest(
 end
 
 type Result = { status: "ok", ip: string, port: number } | { status: "failed", reason: string }
-local function request(url, dependencies: { string }): Result
+local function request(url, packages: { string }): Result
 	local userId = StudioService:GetUserId()
 	local userName = Players:GetNameFromUserIdAsync(userId)
 	local res = HttpService:RequestAsync({
@@ -102,7 +100,7 @@ local function request(url, dependencies: { string }): Result
 		-- Could possibly remove this for privacy reasons, but
 		-- the server doesn't keep logs forever anyways.
 		Body = HttpService:JSONEncode({
-			dependencies = dependencies,
+			dependencies = packages,
 			placeName = game:GetFullName(),
 			placeId = game.PlaceId,
 			gameId = game.GameId,
@@ -170,7 +168,7 @@ local function detectInitialSync(api: RojoApi)
 	end
 end
 
-installDependenciesButton.Click:Connect(function()
+installPackagesButton.Click:Connect(function()
 	local manifest = loadManifest()
 	if manifest.status ~= "ok" then
 		error("Failed to load manifest: " .. manifest.status)
@@ -183,7 +181,7 @@ installDependenciesButton.Click:Connect(function()
 		local nonManagedPackagesWarning = "This place has a Packages folder that wasn't made by studio wally."
 			.. " Please delete it yourself to make sure studio wally won't override anything."
 		assert(not hasNonManagedPackages(), nonManagedPackagesWarning)
-		local res = request(manifest.url, manifest.dependencies)
+		local res = request(manifest.url, manifest.packages)
 		if res.status == "ok" then
 			api:ConnectAsync(res.ip, res.port)
 			detectInitialSync(api)
