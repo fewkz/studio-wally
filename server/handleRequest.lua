@@ -186,6 +186,6 @@ end
 ngx.say(json.encode({
 	status = "ok",
 	ip = externalIP.address,
-	port = service.resource.spec.ports[1].nodePort,
+	port = tostring(service.resource.spec.ports[1].nodePort),
 	id = id, -- Eventually we should have the plugin tell the server to stop serving once it's finished syncing.
 }))

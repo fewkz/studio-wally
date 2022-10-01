@@ -6,7 +6,7 @@ local ServerStorage = game:GetService("ServerStorage")
 local StudioService = game:GetService("StudioService")
 
 type RojoApi = {
-	ConnectAsync: (self: RojoApi, host: string, port: number) -> (),
+	ConnectAsync: (self: RojoApi, host: string, port: string) -> (),
 	DisconnectAsync: (self: RojoApi) -> (),
 	RequestAccess: (self: RojoApi, permissions: { string }) -> (),
 	Connected: boolean,
@@ -194,7 +194,7 @@ installPackagesButton.Click:Connect(function()
 		assert(not hasNonManagedPackages(), nonManagedPackagesWarning)
 		local res = request(manifest.url, manifest.packages)
 		if res.status == "ok" then
-			api:ConnectAsync(res.ip, res.port)
+			api:ConnectAsync(res.ip, tostring(res.port))
 			detectInitialSync(api)
 		elseif res.status == "failed" then
 			warn("Request to wally server failed:", res)
