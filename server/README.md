@@ -1,6 +1,6 @@
 # Studio Wally Server
 
-This is the code for the backend of studio wally that handles requests to install packages and starts a rojo server for serving those packages.
+This is the code for the backend of studio wally that handles requests to install packages and starts a rojo server for serving those packages. I run an up to date version of this server at https://studio-wally.fewkz.com that you're free to use.
 
 ## Setting up
 
