@@ -8,7 +8,7 @@ local StudioService = game:GetService("StudioService")
 type RojoApi = {
 	ConnectAsync: (self: RojoApi, host: string, port: string) -> (),
 	DisconnectAsync: (self: RojoApi) -> (),
-	RequestAccess: (self: RojoApi, permissions: { string }) -> (),
+	RequestAccess: (self: RojoApi, plugin: Plugin, permissions: { string }) -> (),
 	Connected: boolean,
 	Changed: RBXScriptSignal<string, any?, any?>,
 }
@@ -181,7 +181,7 @@ installPackagesButton.Click:Connect(function()
 	assert(api, "Rojo Headless API not found. Make sure you have a version of the Rojo plugin with it available.")
 
 	-- Will yield until permissions are accepted
-	api:RequestAccess({
+	api:RequestAccess(plugin, {
 		"Connected",
 		"Changed",
 		"ConnectAsync",
