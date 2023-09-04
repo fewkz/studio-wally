@@ -14,7 +14,10 @@ type RojoApi = {
 }
 
 local function getRojoAPI(): RojoApi?
-	return _G.Rojo
+	local apiModule = game:FindFirstChild("Rojo")
+	if (apiModule == nil) or (not apiModule:IsA("ModuleScript")) then return end
+	local Rojo = require(apiModule)
+	return Rojo.API
 end
 
 local toolbar = plugin:CreateToolbar("Studio Wally")
