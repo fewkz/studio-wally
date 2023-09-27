@@ -14,7 +14,7 @@ type RojoApi = {
 }
 
 local function getRojoAPI(): RojoApi?
-	local apiModule = game:FindFirstChild("Rojo")
+	local apiModule = game:WaitForChild("Rojo", 30)
 	if (apiModule == nil) or (not apiModule:IsA("ModuleScript")) then return end
 	local Rojo = require(apiModule)
 	return Rojo.API
