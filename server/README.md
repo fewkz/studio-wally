@@ -14,7 +14,7 @@ This is the code for the backend of studio wally that handles requests to instal
 
 You can deploy the backend using Skaffold by doing `skaffold run`. Skaffold requires a image registry to upload the built images to. You can use GitHub for this by passing the `--default-repo ghcr.io/USERNAME/studio-wally` arg. You'll also need to [authenticate with the GitHub container registry](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-to-the-container-registry).
 
-You'll need to manually deploy a service that's exposed to the internet through kubectl, which can vary by cloud provider. The configuration I used is available at https://gist.github.com/fewkz/a894ce5fe521c86b9713a544697f1deb
+You'll also need to expose this service to the internet yourself. I'd recommend using cloudflare tunnels. You'll still have to open ports in order for the rojo servers to be connected to.
 
 ## Wally Server
 
