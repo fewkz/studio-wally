@@ -1,6 +1,6 @@
 {
   "name": "WallyPlugin",
   "tree": {
-    "$path": "plugin.server.lua"
+    "$path": "plugin.server.luau"
   }
 }
