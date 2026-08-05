@@ -1,24 +1,8 @@
 --!strict
 local HttpService = game:GetService("HttpService")
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SerializationService = game:GetService("SerializationService")
 local ServerStorage = game:GetService("ServerStorage")
-local StudioService = game:GetService("StudioService")
-
-type RojoApi = {
-	ConnectAsync: (self: RojoApi, host: string, port: string) -> (),
-	DisconnectAsync: (self: RojoApi) -> (),
-	RequestAccess: (self: RojoApi, plugin: Plugin, permissions: { string }) -> (),
-	Connected: boolean,
-	Changed: RBXScriptSignal<string, any?, any?>,
-}
-
-local function getRojoAPI(): RojoApi?
-	local apiModule = game:WaitForChild("Rojo", 30)
-	if (apiModule == nil) or (not apiModule:IsA("ModuleScript")) then return end
-	local Rojo = require(apiModule)
-	return Rojo.API
-end
 
 local toolbar = plugin:CreateToolbar("Studio Wally")
 
@@ -39,14 +23,19 @@ local manifestTemplate = [[
 -- In this file, you define all the packages you want
 -- the plugin to install.
 return {
-	-- The server is where the plugin connects to via rojo
-	-- to pull packages from. For info on hosting your own
+	-- The server is where the plugin pulls built packages
+	-- from. For info on hosting your own
 	-- server, see https://github.com/fewkz/studio-wally/tree/main/server
 	studioWallyServer = "https://studio-wally.fewkz.com",
 	-- Packages are defined in the standard wally format of
 	-- Name = "user/package@version"
 	-- Visit https://wally.run/ to find available packages
 	packages = {
+		-- Promise = "evaera/promise@4.0.0",
+	},
+	-- Packages listed here are installed into ServerStorage
+	-- instead, so the client never sees them.
+	serverPackages = {
 		-- Promise = "evaera/promise@4.0.0",
 	}
 }
@@ -77,7 +66,10 @@ local function makePackageStrings(packages)
 	return packageStrings
 end
 
-local function loadManifest(): { status: "ok", url: string, packages: { string } } | { status: "manifest_not_found" }
+type Manifest =
+	{ status: "ok", url: string, packages: { string }, serverPackages: { string } }
+	| { status: "manifest_not_found" }
+local function loadManifest(): Manifest
 	local source = ServerStorage:FindFirstChild("StudioWallyManifest")
 	if source then
 		assert(source:IsA("ModuleScript"), "StudioWallyManifest was not a ModuleScript")
@@ -91,40 +83,11 @@ local function loadManifest(): { status: "ok", url: string, packages: { string }
 			status = "ok",
 			url = manifest.studioWallyServer,
 			packages = makePackageStrings(manifest.packages),
+			-- Manifests written before server packages existed won't have this.
+			serverPackages = makePackageStrings(manifest.serverPackages or {}),
 		}
 	else
 		return { status = "manifest_not_found" }
-	end
-end
-
-type Result = { status: "ok", ip: string, port: number } | { status: "failed", reason: string }
-local function request(url, packages: { string }): Result
-	local userId = StudioService:GetUserId()
-	local userName = Players:GetNameFromUserIdAsync(userId)
-	local res = HttpService:RequestAsync({
-		Method = "POST",
-		Url = url,
-		-- Send a bunch of info about who's making the request.
-		-- Could possibly remove this for privacy reasons, but
-		-- the server doesn't keep logs forever anyways.
-		Body = HttpService:JSONEncode({
-			dependencies = packages,
-			placeName = game:GetFullName(),
-			placeId = game.PlaceId,
-			gameId = game.GameId,
-			userName = userName,
-			userId = userId,
-		}),
-	})
-	if res.Success then
-		local data = HttpService:JSONDecode(res.Body)
-		if data.status == "ok" then
-			return data
-		else
-			return { status = "failed", reason = data.status }
-		end
-	else
-		return { status = "failed", reason = "Http request failed: " .. res.StatusMessage }
 	end
 end
 
@@ -138,41 +101,44 @@ local function hasNonManagedPackages()
 	)
 end
 
-local function afterInitialSync()
-	local commonPackages = ReplicatedStorage:WaitForChild("Packages", 1)
-	local serverPackages = ServerStorage:WaitForChild("Packages", 1)
-	assert(commonPackages, "Common packages didn't exist after initial sync")
-	assert(serverPackages, "Server packages didn't exist after initial sync")
-	serverPackages:SetAttribute("StudioWallyManaged", true)
-	commonPackages:SetAttribute("StudioWallyManaged", true)
-end
+local destinations: { [string]: Instance } = {
+	Packages = ReplicatedStorage,
+	ServerPackages = ServerStorage,
+}
 
-local function detectInitialSync(api: RojoApi)
-	if api.Changed then
-		local conn
-		conn = api.Changed:Connect(function(prop)
-			if prop == "Connected" then
-				api:DisconnectAsync()
-				conn:Disconnect()
-				afterInitialSync()
-			end
-		end)
-	else
-		-- Is there a better way to code this race condition?
-		local thread2
-		local thread = task.spawn(function()
-			repeat
-				task.wait()
-			until api.Connected
-			api:DisconnectAsync()
-			afterInitialSync()
-			task.cancel(thread2)
-		end)
-		thread2 = task.delay(10, function()
-			task.cancel(thread)
-			api:DisconnectAsync()
-			error("Initial sync never went through")
-		end)
+local pluginVersion = 2
+
+local function installPackages(url: string, packages: { string }, serverPackages: { string })
+	local res = HttpService:RequestAsync({
+		Method = "POST",
+		Url = url,
+		Headers = { ["Content-Type"] = "application/json" },
+		Body = HttpService:JSONEncode({
+			version = pluginVersion,
+			packages = packages,
+			serverPackages = serverPackages,
+		}),
+	})
+	assert(res.Success, `Request to wally server failed: {res.StatusCode} {res.StatusMessage}: {res.Body}`)
+
+	local serverVersion = tonumber(res.Headers["studio-wally-version"])
+	if serverVersion and serverVersion ~= pluginVersion then
+		error("This version of Studio Wally is out of date, please update the plugin.")
+	end
+
+	local root = SerializationService:DeserializeInstancesAsync(buffer.fromstring(res.Body))[1]
+	assert(root, "Server sent back an empty model")
+
+	for name, service in destinations do
+		local folder = root:FindFirstChild(name)
+		assert(folder, `Server didn't send back a {name} folder`)
+		local existing = service:FindFirstChild("Packages")
+		if existing then
+			existing:Destroy()
+		end
+		folder.Name = "Packages"
+		folder:SetAttribute("StudioWallyManaged", true)
+		folder.Parent = service
 	end
 end
 
@@ -180,34 +146,13 @@ installPackagesButton.Click:Connect(function()
 	local manifest = loadManifest()
 	if manifest.status ~= "ok" then
 		error("Failed to load manifest: " .. manifest.status)
-		return
 	end
 	assert(manifest.status == "ok")
 
-	local api = getRojoAPI()
-	assert(api, "Rojo Headless API not found. Make sure you have a version of the Rojo plugin with it available.")
+	local nonManagedPackagesWarning = "This place has a Packages folder that wasn't made by studio wally."
+		.. " Please delete it yourself to make sure studio wally won't override anything."
+	assert(not hasNonManagedPackages(), nonManagedPackagesWarning)
 
-	-- Will yield until permissions are accepted
-	api:RequestAccess(plugin, {
-		"Connected",
-		"Changed",
-		"ConnectAsync",
-		"DisconnectAsync",
-	})
-
-	if not api.Connected then
-		local nonManagedPackagesWarning = "This place has a Packages folder that wasn't made by studio wally."
-			.. " Please delete it yourself to make sure studio wally won't override anything."
-		assert(not hasNonManagedPackages(), nonManagedPackagesWarning)
-		local res = request(manifest.url, manifest.packages)
-		if res.status == "ok" then
-			api:ConnectAsync(res.ip, tostring(res.port))
-			detectInitialSync(api)
-		elseif res.status == "failed" then
-			warn("Request to wally server failed:", res)
-			error("Request to wally server failed")
-		end
-	else
-		error("Please disconnect from rojo before connecting")
-	end
+	installPackages(manifest.url, manifest.packages, manifest.serverPackages)
+	print("Studio Wally installed packages into ReplicatedStorage and ServerStorage")
 end)

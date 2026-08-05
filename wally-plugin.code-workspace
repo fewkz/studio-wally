@@ -8,10 +8,5 @@
             "name": "Server",
             "path": "server",
         }
-    ],
-    "settings": {
-        "vs-kubernetes": {
-            "disable-linters": ["resource-limits"],
-        }
-    }
+    ]
 }
