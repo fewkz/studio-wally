@@ -67,6 +67,16 @@ editManifestButton.Click:Connect(function()
 end)
 
 local packagePattern = "^.+/.+@.+$"
+local function makePackageStrings(packages)
+	local packageStrings = {}
+	for name, package in packages do
+		assert(typeof(name) == "string", "Package had key " .. tostring(name) .. ", must be a string.")
+		assert(typeof(package) == "string" and string.match(package, packagePattern), "Invalid package " .. package)
+		table.insert(packageStrings, name .. ' = "' .. package .. '"')
+	end
+	return packageStrings
+end
+
 local function loadManifest(): { status: "ok", url: string, packages: { string } } | { status: "manifest_not_found" }
 	local source = ServerStorage:FindFirstChild("StudioWallyManifest")
 	if source then
@@ -77,16 +87,10 @@ local function loadManifest(): { status: "ok", url: string, packages: { string }
 			error("Dependencies field was renamed to packages, you must rename it in the manifest.")
 		end
 		assert(typeof(manifest.packages) == "table", "Manifest is missing valid packages field.")
-		local packageStrings = {}
-		for name, package in manifest.packages do
-			assert(typeof(name) == "string", "Package had key " .. tostring(name) .. ", must be a string.")
-			assert(typeof(package) == "string" and string.match(package, packagePattern), "Invalid package " .. package)
-			table.insert(packageStrings, name .. ' = "' .. package .. '"')
-		end
 		return {
 			status = "ok",
 			url = manifest.studioWallyServer,
-			packages = packageStrings,
+			packages = makePackageStrings(manifest.packages),
 		}
 	else
 		return { status = "manifest_not_found" }
