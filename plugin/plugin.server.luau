@@ -11,11 +11,11 @@ local tooltips = {
 	installPackages = "Installs the packages you defined into your project",
 }
 local editManifestButton: PluginToolbarButton =
-	toolbar:CreateButton("Edit", tooltips.editManifest, "rbxassetid://6124828331", "Edit Packages")
+	toolbar:CreateButton("Edit", tooltips.editManifest, "rbxassetid://121050972869021", "Edit Packages")
 editManifestButton.ClickableWhenViewportHidden = true
 
 local installPackagesButton: PluginToolbarButton =
-	toolbar:CreateButton("Install", tooltips.installPackages, "rbxassetid://6124828331", "Install Packages")
+	toolbar:CreateButton("Install", tooltips.installPackages, "rbxassetid://94249622653524", "Install Packages")
 installPackagesButton.ClickableWhenViewportHidden = true
 
 local manifestTemplate = [[
