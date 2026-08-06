@@ -62,6 +62,33 @@ def buildPackages(manifest: str) -> bytes:
         # wally deletes these when there's nothing to install, but rojo needs them.
         (work / "Packages").mkdir(exist_ok=True)
         (work / "ServerPackages").mkdir(exist_ok=True)
+        # Without this the link modules don't re-export the package's types.
+        if shutil.which("wally-package-types"):
+            subprocess.run(
+                [
+                    "rojo",
+                    "sourcemap",
+                    "default.project.json",
+                    "--output",
+                    "sourcemap.json",
+                ],
+                cwd=work,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            for folder in ("Packages", "ServerPackages"):
+                subprocess.run(
+                    ["wally-package-types", "--sourcemap", "sourcemap.json", folder],
+                    cwd=work,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+        else:
+            print(
+                "no wally-package-types, packages won't export types", file=sys.stderr
+            )
         subprocess.run(
             ["rojo", "build", "default.project.json", "--output", "packages.rbxm"],
             cwd=work,

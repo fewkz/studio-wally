@@ -9,6 +9,8 @@ use, and it's what the plugin points at by default.
 ## Running it
 
 Requires Python 3.7 or newer, with `wally` and `rojo` on PATH.
+[wally-package-types](https://github.com/JohnnyMorganz/wally-package-types) is
+optional, but without it the packages won't export their types.
 
 ```sh
 python server.py 8080
