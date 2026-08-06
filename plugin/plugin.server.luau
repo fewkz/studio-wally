@@ -26,7 +26,7 @@ return {
 	-- The server is where the plugin pulls built packages
 	-- from. For info on hosting your own
 	-- server, see https://github.com/fewkz/studio-wally/tree/main/server
-	studioWallyServer = "https://studio-wally.fewkz.com",
+	server = "https://studio-wally.fewkz.com",
 	-- Packages are defined in the standard wally format of
 	-- Name = "user/package@version"
 	-- Visit https://wally.run/ to find available packages
@@ -74,14 +74,19 @@ local function loadManifest(): Manifest
 	if source then
 		assert(source:IsA("ModuleScript"), "StudioWallyManifest was not a ModuleScript")
 		local manifest = require(source:Clone())
-		assert(typeof(manifest.studioWallyServer) == "string", "Manifest is missing valid studioWallyServer field")
+		local server = manifest.server
+		if manifest.studioWallyServer then
+			warn("The studioWallyServer field was renamed to server, you should rename it in the manifest.")
+			server = server or manifest.studioWallyServer
+		end
+		assert(typeof(server) == "string", "Manifest is missing valid server field")
 		if manifest.dependencies then
-			error("Dependencies field was renamed to packages, you must rename it in the manifest.")
+			error("The dependencies field was renamed to packages, you must rename it in the manifest.")
 		end
 		assert(typeof(manifest.packages) == "table", "Manifest is missing valid packages field.")
 		return {
 			status = "ok",
-			url = manifest.studioWallyServer,
+			url = server,
 			packages = makePackageStrings(manifest.packages),
 			-- Manifests written before server packages existed won't have this.
 			serverPackages = makePackageStrings(manifest.serverPackages or {}),
