@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent
 PROJECT = ROOT / "default.project.json"
+PLACE = ROOT / "place.project.json"
 DEFAULT_PORT = 8080
 REPOSITORY = "https://github.com/fewkz/studio-wally"
 REGISTRY = "https://github.com/UpliftGames/wally-index"
@@ -41,6 +42,12 @@ def buildManifest(packages, serverPackages) -> str:
             f'registry = "{REGISTRY}"',
             'realm = "shared"',
             "",
+            # Where the plugin ends up putting each folder. Wally needs this to
+            # link a server package to a shared one it depends on.
+            "[place]",
+            'shared-packages = "game.ReplicatedStorage.Packages"',
+            'server-packages = "game.ServerStorage.Packages"',
+            "",
             "[dependencies]",
             *packages,
             "",
@@ -56,6 +63,7 @@ def buildPackages(manifest: str) -> bytes:
         work = Path(scratch)
         (work / "wally.toml").write_text(manifest)
         shutil.copy(PROJECT, work / "default.project.json")
+        shutil.copy(PLACE, work / "place.project.json")
         subprocess.run(
             ["wally", "install"], cwd=work, capture_output=True, text=True, check=True
         )
@@ -68,7 +76,7 @@ def buildPackages(manifest: str) -> bytes:
                 [
                     "rojo",
                     "sourcemap",
-                    "default.project.json",
+                    "place.project.json",
                     "--output",
                     "sourcemap.json",
                 ],

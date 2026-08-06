@@ -1,0 +1,16 @@
+{
+    "name": "StudioWallyPlace",
+    "tree": {
+        "$className": "DataModel",
+        "ReplicatedStorage": {
+            "Packages": {
+                "$path": "Packages"
+            }
+        },
+        "ServerStorage": {
+            "Packages": {
+                "$path": "ServerPackages"
+            }
+        }
+    }
+}
