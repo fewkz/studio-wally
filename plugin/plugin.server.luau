@@ -158,6 +158,17 @@ installPackagesButton.Click:Connect(function()
 		.. " Please delete it yourself to make sure studio wally won't override anything."
 	assert(not hasNonManagedPackages(), nonManagedPackagesWarning)
 
+	if #manifest.packages == 0 and #manifest.serverPackages == 0 then
+		for _, service in destinations do
+			local existing = service:FindFirstChild("Packages")
+			if existing then
+				existing:Destroy()
+			end
+		end
+		print("Studio Wally: Manifest has no packages to install, cleared all existing packages.")
+		return
+	end
+
 	installPackages(manifest.url, manifest.packages, manifest.serverPackages)
-	print("Studio Wally installed packages into ReplicatedStorage and ServerStorage")
+	print(`Studio Wally: Installed {#manifest.packages} packages into ReplicatedStorage and {#manifest.serverPackages} packages into ServerStorage`)
 end)
