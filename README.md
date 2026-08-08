@@ -18,4 +18,20 @@ The "Install Packages" button will send a request to the server to download the 
 
 The manifest supports a `packages` field and a `serverPackages` field, which will go into ReplicatedStorage and ServerStorage respectively.
 
+### Sample Manifest
+
+Here is a sample studio wally manifest which downloads `roblox/roact@1.4.4` into `ReplicatedStorage.Packages.Roact` and `evaera/promise@4.0.0` into `ServerStorage.Packages.Promise`
+
+```lua
+return {
+	server = "https://studio-wally.fewkz.com",
+	packages = {
+		Roact = "roblox/roact@1.4.4",
+	},
+	serverPackages = {
+		Promise = "evaera/promise@4.0.0",
+	}
+}
+```
+
 Make sure to check the output if something unexpected happened, as it gives errors when something goes wrong. Feel free to open an issue if you run into any problems.
