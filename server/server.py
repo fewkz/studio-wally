@@ -58,7 +58,8 @@ def buildManifest(packages, serverPackages) -> str:
     )
 
 
-def buildPackages(manifest: str) -> bytes:
+def buildPackages(manifest: str):
+    warnings = []
     with tempfile.TemporaryDirectory() as scratch:
         work = Path(scratch)
         (work / "wally.toml").write_text(manifest)
@@ -86,13 +87,28 @@ def buildPackages(manifest: str) -> bytes:
                 check=True,
             )
             for folder in ("Packages", "ServerPackages"):
-                subprocess.run(
-                    ["wally-package-types", "--sourcemap", "sourcemap.json", folder],
-                    cwd=work,
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                )
+                try:
+                    subprocess.run(
+                        [
+                            "wally-package-types",
+                            "--sourcemap",
+                            "sourcemap.json",
+                            folder,
+                        ],
+                        cwd=work,
+                        capture_output=True,
+                        text=True,
+                        check=True,
+                    )
+                except subprocess.CalledProcessError as err:
+                    output = f"{err.stdout}{err.stderr}"
+                    for chunk in output.split("error: Failed to create new link")[:-1]:
+                        name = chunk.rsplit("_Index/", 1)[-1].split("/")[0]
+                        warnings.append(name.replace("_", "/", 1))
+                    print(
+                        f"wally-package-types failed on {folder}:{chr(10)}{output}",
+                        file=sys.stderr,
+                    )
         else:
             print(
                 "no wally-package-types, packages won't export types", file=sys.stderr
@@ -104,13 +120,15 @@ def buildPackages(manifest: str) -> bytes:
             text=True,
             check=True,
         )
-        return (work / "packages.rbxm").read_bytes()
+        return (work / "packages.rbxm").read_bytes(), warnings
 
 
 class Handler(BaseHTTPRequestHandler):
-    def respond(self, code: int, contentType: str, body: bytes):
+    def respond(self, code: int, contentType: str, body: bytes, warning=None):
         self.send_response(code)
         self.send_header("Studio-Wally-Version", str(PLUGIN_VERSION))
+        if warning:
+            self.send_header("Studio-Wally-Warning", warning)
         self.send_header("Content-Type", contentType)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
@@ -159,7 +177,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         started = time.monotonic()
         try:
-            packages = buildPackages(manifest)
+            packages, warnings = buildPackages(manifest)
         except subprocess.CalledProcessError as err:
             message = f"{err.cmd[0]} failed:\n{err.stdout}{err.stderr}"
             print(message, file=sys.stderr)
@@ -170,7 +188,12 @@ class Handler(BaseHTTPRequestHandler):
             self.respond(500, "text/plain", str(err).encode())
             return
         self.logBuild(posted, time.monotonic() - started)
-        self.respond(200, "application/octet-stream", packages)
+        warning = (
+            f"Types could not be re-exported for {', '.join(warnings)}"
+            if warnings
+            else None
+        )
+        self.respond(200, "application/octet-stream", packages, warning)
 
 
 def main():

@@ -131,6 +131,11 @@ local function installPackages(url: string, packages: { string }, serverPackages
 		error("This version of Studio Wally is out of date, please update the plugin.")
 	end
 
+	local warning = res.Headers["studio-wally-warning"]
+	if warning then
+		warn(`Studio Wally: {warning}`)
+	end
+
 	local root = SerializationService:DeserializeInstancesAsync(buffer.fromstring(res.Body))[1]
 	assert(root, "Server sent back an empty model")
 
