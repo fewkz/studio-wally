@@ -71,6 +71,11 @@ def buildPackages(manifest: str):
         # wally deletes these when there's nothing to install, but rojo needs them.
         (work / "Packages").mkdir(exist_ok=True)
         (work / "ServerPackages").mkdir(exist_ok=True)
+        installed = set()
+        for folder in ("Packages", "ServerPackages"):
+            index = work / folder / "_Index"
+            if index.is_dir():
+                installed.update(entry.name for entry in index.iterdir())
         # Without this the link modules don't re-export the package's types.
         if shutil.which("wally-package-types"):
             subprocess.run(
@@ -120,7 +125,7 @@ def buildPackages(manifest: str):
             text=True,
             check=True,
         )
-        return (work / "packages.rbxm").read_bytes(), warnings
+        return (work / "packages.rbxm").read_bytes(), warnings, sorted(installed)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -143,11 +148,15 @@ class Handler(BaseHTTPRequestHandler):
         for name, value in self.headers.items():
             self.log_message("%s", f"  {name}: {value}")
 
-    def logBuild(self, posted, seconds: float):
+    def logBuild(self, posted, installed, seconds: float):
         count = len(posted.get("packages") or []) + len(
             posted.get("serverPackages") or []
         )
-        self.log_message("%s", f"Built {count} packages in {seconds:.1f}s")
+        self.log_message(
+            "%s",
+            f"Built {len(installed)} packages from {count} requested"
+            f" in {seconds:.1f}s",
+        )
 
     def do_GET(self):
         self.send_response(302)
@@ -177,7 +186,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         started = time.monotonic()
         try:
-            packages, warnings = buildPackages(manifest)
+            packages, warnings, installed = buildPackages(manifest)
         except subprocess.CalledProcessError as err:
             message = f"{err.cmd[0]} failed:\n{err.stdout}{err.stderr}"
             print(message, file=sys.stderr)
@@ -187,7 +196,7 @@ class Handler(BaseHTTPRequestHandler):
             print(err, file=sys.stderr)
             self.respond(500, "text/plain", str(err).encode())
             return
-        self.logBuild(posted, time.monotonic() - started)
+        self.logBuild(posted, installed, time.monotonic() - started)
         warning = (
             f"Types could not be re-exported for {', '.join(warnings)}"
             if warnings
