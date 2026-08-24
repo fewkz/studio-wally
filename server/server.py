@@ -12,6 +12,7 @@ ROOT = Path(__file__).parent
 PROJECT = ROOT / "default.project.json"
 PLACE = ROOT / "place.project.json"
 DEFAULT_PORT = 8080
+TIMEOUT = 300
 REPOSITORY = "https://github.com/fewkz/studio-wally"
 REGISTRY = os.environ.get(
     "WALLY_REGISTRY", "https://github.com/UpliftGames/wally-index"
@@ -69,7 +70,12 @@ def buildPackages(manifest: str):
         shutil.copy(PROJECT, work / "default.project.json")
         shutil.copy(PLACE, work / "place.project.json")
         subprocess.run(
-            ["wally", "install"], cwd=work, capture_output=True, text=True, check=True
+            ["wally", "install"],
+            cwd=work,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=TIMEOUT,
         )
         # wally deletes these when there's nothing to install, but rojo needs them.
         (work / "Packages").mkdir(exist_ok=True)
@@ -93,6 +99,7 @@ def buildPackages(manifest: str):
                 capture_output=True,
                 text=True,
                 check=True,
+                timeout=TIMEOUT,
             )
             for folder in ("Packages", "ServerPackages"):
                 try:
@@ -107,6 +114,7 @@ def buildPackages(manifest: str):
                         capture_output=True,
                         text=True,
                         check=True,
+                        timeout=TIMEOUT,
                     )
                 except subprocess.CalledProcessError as err:
                     output = f"{err.stdout}{err.stderr}"
@@ -127,6 +135,7 @@ def buildPackages(manifest: str):
             capture_output=True,
             text=True,
             check=True,
+            timeout=TIMEOUT,
         )
         return (work / "packages.rbxm").read_bytes(), warnings, sorted(installed)
 
@@ -190,6 +199,11 @@ class Handler(BaseHTTPRequestHandler):
         started = time.monotonic()
         try:
             packages, warnings, installed = buildPackages(manifest)
+        except subprocess.TimeoutExpired as err:
+            message = f"{err.cmd[0]} took longer than {err.timeout}s"
+            print(message, file=sys.stderr)
+            self.respond(504, "text/plain", message.encode())
+            return
         except subprocess.CalledProcessError as err:
             message = f"{err.cmd[0]} failed:\n{err.stdout}{err.stderr}"
             print(message, file=sys.stderr)
