@@ -152,7 +152,7 @@ local function installPackages(url: string, packages: { string }, serverPackages
 	end
 end
 
-installPackagesButton.Click:Connect(function()
+local function install()
 	local manifest = loadManifest()
 	if manifest.status ~= "ok" then
 		error("Failed to load manifest: " .. manifest.status)
@@ -176,4 +176,19 @@ installPackagesButton.Click:Connect(function()
 
 	installPackages(manifest.url, manifest.packages, manifest.serverPackages)
 	print(`Studio Wally: Installed {#manifest.packages} packages into ReplicatedStorage and {#manifest.serverPackages} packages into ServerStorage`)
+end
+
+local installing = false
+installPackagesButton.Click:Connect(function()
+	if installing then
+		return
+	end
+	installing = true
+	installPackagesButton:SetActive(true)
+	local ok, err = pcall(install)
+	installPackagesButton:SetActive(false)
+	installing = false
+	if not ok then
+		error(err, 0)
+	end
 end)
