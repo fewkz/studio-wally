@@ -1,4 +1,5 @@
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -12,7 +13,9 @@ PROJECT = ROOT / "default.project.json"
 PLACE = ROOT / "place.project.json"
 DEFAULT_PORT = 8080
 REPOSITORY = "https://github.com/fewkz/studio-wally"
-REGISTRY = "https://github.com/UpliftGames/wally-index"
+REGISTRY = os.environ.get(
+    "WALLY_REGISTRY", "https://github.com/UpliftGames/wally-index"
+)
 PLUGIN_VERSION = 2
 OUTDATED_PLUGIN_REPLY = (
     b'{"status":"Using an old version of the Studio Wally plugin,'
