@@ -25,6 +25,10 @@ Studio Wally has wally lockfile support, which pins previously installed package
 You can create a StringValue with the name "StudioWallyLock" inside of ServerStorage, which the plugin will read to
 forward to the server when installing packages with wally. After installation, the updated lockfile will be written.
 
+Wally treats the version specified in the manifest as a minimum. Wally will download any package with the same major
+version that is higher than the version specified. Therefore downloading `package@1.0.0` may download `package@1.2.0`.
+If you want to pin a specific version, you should do `package@=1.0.0`, or use the lockfile feature to keep the version you were using between installs.
+
 ### Sample Manifest
 
 Here is a sample studio wally manifest which downloads `roblox/roact@1.4.4` into `ReplicatedStorage.Packages.Roact` and `evaera/promise@4.0.0` into `ServerStorage.Packages.Promise`
