@@ -66,10 +66,8 @@ local function makePackageStrings(packages)
 	return packageStrings
 end
 
-type Manifest =
-	{ status: "ok", url: string, packages: { string }, serverPackages: { string } }
-	| { status: "manifest_not_found" }
-local function loadManifest(): Manifest
+type Manifest = { url: string, packages: { string }, serverPackages: { string }, useLockfile: boolean }
+local function loadManifest(): ({ status: "ok" } & Manifest) | { status: "manifest_not_found" }
 	local source = ServerStorage:FindFirstChild("StudioWallyManifest")
 	if source then
 		assert(source:IsA("ModuleScript"), "StudioWallyManifest was not a ModuleScript")
@@ -90,6 +88,7 @@ local function loadManifest(): Manifest
 			packages = makePackageStrings(manifest.packages),
 			-- Manifests written before server packages existed won't have this.
 			serverPackages = makePackageStrings(manifest.serverPackages or {}),
+			useLockfile = manifest.useLockfile == true,
 		}
 	else
 		return { status = "manifest_not_found" }
@@ -113,15 +112,15 @@ local destinations: { [string]: Instance } = {
 
 local pluginVersion = 2
 
-local function installPackages(url: string, packages: { string }, serverPackages: { string })
+local function installPackages(manifest: Manifest)
 	local res = HttpService:RequestAsync({
 		Method = "POST",
-		Url = url,
+		Url = manifest.url,
 		Headers = { ["Content-Type"] = "application/json" },
 		Body = HttpService:JSONEncode({
 			version = pluginVersion,
-			packages = packages,
-			serverPackages = serverPackages,
+			packages = manifest.packages,
+			serverPackages = manifest.serverPackages,
 		}),
 	})
 	assert(res.Success, `Request to wally server failed: {res.StatusCode} {res.StatusMessage}: {res.Body}`)
@@ -174,7 +173,7 @@ local function install()
 		return
 	end
 
-	installPackages(manifest.url, manifest.packages, manifest.serverPackages)
+	installPackages(manifest)
 	print(`Studio Wally: Installed {#manifest.packages} packages into ReplicatedStorage and {#manifest.serverPackages} packages into ServerStorage`)
 end
 
