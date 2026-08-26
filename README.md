@@ -2,8 +2,6 @@
 
 Studio Wally is a plugin for Roblox Studio that lets you install and update [Wally](https://github.com/UpliftGames/wally) packages all from in studio.
 
-This plugin is intended to be used by projects that aren't managed by Rojo, such as prototypes or legacy games.
-
 ## How to get
 
 You can get the latest version of the plugin from [Roblox Library](https://www.roblox.com/library/11121595926/Studio-Wally),
