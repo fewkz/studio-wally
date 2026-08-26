@@ -41,6 +41,20 @@ return {
 }
 ]]
 
+local function findStudioWallyLock(): StringValue?
+	local lock = ServerStorage:FindFirstChild("StudioWallyLock")
+	if lock then 
+		if lock:IsA("StringValue") then
+			return lock
+		else
+			warn(`StudioWallyLock was not a StringValue, ignoring`)
+			return nil
+		end
+	else
+		return nil
+	end
+end
+
 editManifestButton.Click:Connect(function()
 	local source = ServerStorage:FindFirstChild("StudioWallyManifest")
 	if source then
@@ -112,7 +126,7 @@ local destinations: { [string]: Instance } = {
 
 local pluginVersion = 2
 
-local function installPackages(manifest: Manifest)
+local function installPackages(manifest: Manifest, lock: StringValue?)
 	local res = HttpService:RequestAsync({
 		Method = "POST",
 		Url = manifest.url,
@@ -121,6 +135,7 @@ local function installPackages(manifest: Manifest)
 			version = pluginVersion,
 			packages = manifest.packages,
 			serverPackages = manifest.serverPackages,
+			lock = if lock then lock.Value else nil,
 		}),
 	})
 	assert(res.Success, `Request to wally server failed: {res.StatusCode} {res.StatusMessage}: {res.Body}`)
@@ -149,6 +164,13 @@ local function installPackages(manifest: Manifest)
 		folder:SetAttribute("StudioWallyManaged", true)
 		folder.Parent = service
 	end
+
+	if lock then
+		local newLock = root:FindFirstChild("StudioWallyLock")
+		if newLock and newLock:IsA("StringValue") then
+			lock.Value = newLock.Value
+		end
+	end
 end
 
 local function install()
@@ -162,6 +184,8 @@ local function install()
 		.. " Please delete it yourself to make sure studio wally won't override anything."
 	assert(not hasNonManagedPackages(), nonManagedPackagesWarning)
 
+	local lock = findStudioWallyLock()
+
 	if #manifest.packages == 0 and #manifest.serverPackages == 0 then
 		for _, service in destinations do
 			local existing = service:FindFirstChild("Packages")
@@ -169,11 +193,14 @@ local function install()
 				existing:Destroy()
 			end
 		end
+		if lock then
+			lock.Value = ""
+		end
 		print("Studio Wally: Manifest has no packages to install, cleared all existing packages.")
 		return
 	end
 
-	installPackages(manifest)
+	installPackages(manifest, lock)
 	print(`Studio Wally: Installed {#manifest.packages} packages into ReplicatedStorage and {#manifest.serverPackages} packages into ServerStorage`)
 end
 

@@ -62,11 +62,13 @@ def buildManifest(packages, serverPackages) -> str:
     )
 
 
-def buildPackages(manifest: str):
+def buildPackages(manifest: str, lock=None):
     warnings = []
     with tempfile.TemporaryDirectory() as scratch:
         work = Path(scratch)
         (work / "wally.toml").write_text(manifest)
+        if lock:
+            (work / "wally.lock").write_text(lock)
         shutil.copy(PROJECT, work / "default.project.json")
         shutil.copy(PLACE, work / "place.project.json")
         subprocess.run(
@@ -80,6 +82,10 @@ def buildPackages(manifest: str):
         # wally deletes these when there's nothing to install, but rojo needs them.
         (work / "Packages").mkdir(exist_ok=True)
         (work / "ServerPackages").mkdir(exist_ok=True)
+        written = work / "wally.lock"
+        (work / "lock.txt").write_text(
+            written.read_text() if written.is_file() else ""
+        )
         installed = set()
         for folder in ("Packages", "ServerPackages"):
             index = work / folder / "_Index"
@@ -196,9 +202,13 @@ class Handler(BaseHTTPRequestHandler):
         except BadManifest as err:
             self.respond(400, "text/plain", str(err).encode())
             return
+        lock = posted.get("lock")
+        if lock is not None and not isinstance(lock, str):
+            self.respond(400, "text/plain", b"lock must be a string")
+            return
         started = time.monotonic()
         try:
-            packages, warnings, installed = buildPackages(manifest)
+            packages, warnings, installed = buildPackages(manifest, lock)
         except subprocess.TimeoutExpired as err:
             message = f"{err.cmd[0]} took longer than {err.timeout}s"
             print(message, file=sys.stderr)

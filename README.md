@@ -18,6 +18,10 @@ The "Install Packages" button will send a request to the server to download the 
 
 The manifest supports a `packages` field and a `serverPackages` field, which will go into ReplicatedStorage and ServerStorage respectively.
 
+Studio Wally has wally lockfile support, which pins previously installed package versions in case a new version is published.
+You can create a StringValue with the name "StudioWallyLock" inside of ServerStorage, which the plugin will read to
+forward to the server when installing packages with wally. After installation, the updated lockfile will be written.
+
 ### Sample Manifest
 
 Here is a sample studio wally manifest which downloads `roblox/roact@1.4.4` into `ReplicatedStorage.Packages.Roact` and `evaera/promise@4.0.0` into `ServerStorage.Packages.Promise`
