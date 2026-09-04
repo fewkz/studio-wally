@@ -80,7 +80,7 @@ local function makePackageStrings(packages)
 	return packageStrings
 end
 
-type Manifest = { url: string, packages: { string }, serverPackages: { string }, useLockfile: boolean }
+type Manifest = { url: string, packages: { string }, serverPackages: { string } }
 local function loadManifest(): ({ status: "ok" } & Manifest) | { status: "manifest_not_found" }
 	local source = ServerStorage:FindFirstChild("StudioWallyManifest")
 	if source then
@@ -101,8 +101,7 @@ local function loadManifest(): ({ status: "ok" } & Manifest) | { status: "manife
 			url = server,
 			packages = makePackageStrings(manifest.packages),
 			-- Manifests written before server packages existed won't have this.
-			serverPackages = makePackageStrings(manifest.serverPackages or {}),
-			useLockfile = manifest.useLockfile == true,
+			serverPackages = makePackageStrings(manifest.serverPackages or {})
 		}
 	else
 		return { status = "manifest_not_found" }
